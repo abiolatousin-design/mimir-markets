@@ -1,13 +1,14 @@
-#![no_std]
-//! Mimir market — oracle-settled prediction market on Soroban.
-//!
-//! Port of `contracts/MimirV2.sol`. Stakes are held in a USDC Stellar Asset
-//! Contract; fees are charged on PROFIT only, snapshotted per claim, and any
-//! policy change is timelocked under a hard constant cap. Oracle
-//! rotation is likewise timelocked so settlement authority cannot move silently.
-//!
-//! Deliberate deviations from the Solidity original are marked
-//! `DEVIATION FROM SOLIDITY` at the point they occur.
+#no_std
+use soroban_sdk;
+/// Mimir market — oracle-settled prediction market on Soroban.
+///
+/// Port of `contracts/MimirV2.sol`. Stakes are held in a USDC Stellar Asset
+/// Contract; fees are charged on PROFIT only, snapshotted per claim, and any
+/// policy change is timelocked under a hard constant cap. Oracle
+/// rotation is likewise timelocked so settlement authority cannot move silently.
+///
+/// Deliberate deviations from the Solidity original are marked
+/// `DEVIATION FROM SOLIDITY` at the point they occur.
 
 mod admin;
 mod claims;
@@ -22,7 +23,7 @@ mod util;
 pub mod contract;
 
 pub use contract::{MimirMarket, MimirMarketClient};
-pub use types::*;
+pub use types:*;
 
 #[cfg(test)]
 mod test_challenge_lock;
@@ -38,6 +39,8 @@ mod test_fee_rounding;
 mod test_fees;
 #[cfg(test)]
 mod test_lifecycle;
+#[cfg(test)]
+mod test_ownership;
 #[cfg(test)]
 mod test_pagination;
 #[cfg(test)]

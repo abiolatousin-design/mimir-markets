@@ -7,7 +7,7 @@ use soroban_sdk::{contracttype, Address, Env, Vec};
 
 use crate::types::{
     Challenger, ChallengerPage, Claim, Error, FeePolicy, PendingFeePolicy, PendingOracle,
-    RematchStatus, Verdict,
+    PendingOwner, RematchStatus, Verdict,
 };
 
 #[contracttype]
@@ -22,6 +22,8 @@ pub enum DataKey {
     Pending,
     /// Queued oracle rotation (separate from fee-policy Pending).
     PendingOracle,
+    /// Proposed new owner awaiting acceptance.
+    PendingOwner,
     ClaimCount,
     TotalResolved,
     FeesAccrued,
@@ -64,6 +66,18 @@ pub fn owner(env: &Env) -> Result<Address, Error> {
 
 pub fn set_owner(env: &Env, who: &Address) {
     env.storage().instance().set(&DataKey::Owner, who);
+}
+
+pub fn pending_owner(env: &Env) -> Option<PendingOwner> {
+    env.storage().instance().get(&DataKey::PendingOwner)
+}
+
+pub fn set_pending_owner(env: &Env, pending: &PendingOwner) {
+    env.storage().instance().set(&DataKey::PendingOwner, pending);
+}
+
+pub fn clear_pending_owner(env: &Env) {
+    env.storage().instance().remove(&DataKey::PendingOwner);
 }
 
 pub fn oracle(env: &Env) -> Result<Address, Error> {
