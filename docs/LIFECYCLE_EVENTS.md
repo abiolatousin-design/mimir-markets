@@ -274,6 +274,10 @@ The following existing events work with lifecycle events:
 - `**Withdrawn**: Now paired with `LiquidityRemoved`
 - **Resolved**: Now paired with `MarketStateTransitioned` and `MarketDeadlineReached`
 
+## Squad Market Lifecycle State Machine
+
+For the full state diagram, the caller/authority matrix, and the refund rules for squad markets, see [`SQUAD_LIFECYCLE.md`](./SQUAD_LIFECyCLE.md). That document covers how `cancel_market`, `transition_deadline`, and `resolve` with `RESULT_CANCELLED` interact, and how `claim` treats `RESULT_CANCELLED` as a principal refund.
+
 ## Integration Guidelines
 
 ### For Indexers
@@ -315,6 +319,8 @@ Within a single transaction:
 5. **Pool Deposit**: `LiquidityAdded` → `Deposited`
 6. **Pool Withdraw**: `LiquidityRemoved` → `Withdrawn`
 7. **Pool Resolve**: `MarketDeadlineReached` → `MarketStateTransitioned` → `Resolved`
+8. **Pool Cancel**: `MarketCancelled` (captain-initiated cancellation before deadline)
+9. **Pool Deadline Transition**: `MarketDeadlineReached` → `MarketStateTransitioned` (one-sided pools after deadline)
 8. **Fee Recipient Rotation**: `FeeRecipientQueued` → `FeeRecipientCancelled` → `FeeRecipientChanged`
 
 ## Migration Notes
