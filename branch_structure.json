@@ -4,6 +4,10 @@
     "feat/issue-374-feat-contracts-make-mimir-market-ownership",
     "fix/issue-341-fix-ui-let-users-clear-the-per-market-amount-in",
     "fix/issue-363-test-ui-cover-formatdashboardsnapshotage",
+    "feat/issue-330-feat-api-rate-limit-the-public-vs-index-refresh",
+    "feat/issue-333-feat-api-gate-the-revenue-summary-route-with",
+    "feat/issue-434-feat-ui-add-keyboard-shortcuts-help-to-the",
+    "fix/issue-325-fix-contracts-remove-the-duplicated-types",
     "main",
     "origin"
   ],
@@ -11,6 +15,10 @@
     "feat/issue-374-feat-contracts-make-mimir-market-ownership": "main",
     "fix/issue-341-fix-ui-let-users-clear-the-per-market-amount-in": "main",
     "fix/issue-363-test-ui-cover-formatdashboardsnapshotage": "main",
+    "feat/issue-330-feat-api-rate-limit-the-public-vs-index-refresh": "main",
+    "feat/issue-333-feat-api-gate-the-revenue-summary-route-with": "main",
+    "feat/issue-434-feat-ui-add-keyboard-shortcuts-help-to-the": "main",
+    "fix/issue-325-fix-contracts-remove-the-duplicated-types": "main",
     "main": null,
     "origin": "main"
   },
@@ -19,6 +27,10 @@
     "feat/issue-374-feat-contracts-make-mimir-market-ownership",
     "fix/issue-341-fix-ui-let-users-clear-the-per-market-amount-in",
     "fix/issue-363-test-ui-cover-formatdashboardsnapshotage",
+    "feat/issue-330-feat-api-rate-limit-the-public-vs-index-refresh",
+    "feat/issue-333-feat-api-gate-the-revenue-summary-route-with",
+    "feat/issue-434-feat-ui-add-keyboard-shortcuts-help-to-the",
+    "fix/issue-325-fix-contracts-remove-the-duplicated-types",
     "origin"
   ]
 }

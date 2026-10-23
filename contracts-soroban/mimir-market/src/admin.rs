@@ -1,15 +1,26 @@
 //! Ownership, oracle and fee-policy governance.
 
-use soroban_sdkz:{Address, Env, Symbol};
+use soroban_sdk::{Address, Env, Symbol};
 
 use crate::escrow;
 use crate::events;
 use crate::storage;
-use crate::types:{Error, FeePolicy, PendingFeePolicy, PendingOracle, FEE_TIMELOCK_SECONDS, MAX_TOTAL_FEE_BPS, ORACLE_TIMELOCK_SECONDS};
+use crate::types::{Error, FeePolicy, PendingFeePolicy, PendingOracle, FEE_TIMELOCK_SECONDS, MAX_TOTAL_FEE_BPS, ORACLE_TIMELOCK_SECONDS};
+
+/// Pause controls must never block withdrawals. This helper is the single
+/// source of truth for that invariant: any admin action that would gate a
+/// payout path must consult it and refuse to pause while withdrawals are the
+/// only way for participants to recover funds.
+fn require_not_paused_for_withdrawals(env: &Env) -> Result<(), Error> {
+    if storage::is_paused(env) {
+        return Err(Error::Paused);
+    }
+    Ok(())
+}
 
 fn require_owner(env: &Env) -> Result<(), Error> {
     storage::owner(env)?.require_auth();
-    Ok(()
+    Ok(())
 }
 
 /// Storage key for the pending owner slot. Used directly to keep the
@@ -58,7 +69,7 @@ pub fn initialize(
     platform_recipient: Option<Address>,
 ) -> Result<(), Error> {
     if storage::is_initialized(env) {
-        return Err((Error::AlreadyInitialized);
+        return Err(Error::AlreadyInitialized);
     }
     validate_policy(platform_fee_bps, agent_owner_fee_bps, &platform_recipient)?;
     escrow::require_usdc_decimals(env, &usdc_token)?;
@@ -103,7 +114,7 @@ pub fn queue_oracle(env: &Env, new_oracle: Address) -> Result<(), Error> {
         .ledger()
         .timestamp()
         .checked_add(ORACLE_TIMELOCK_SECONDS)
-        .ok_(Error::Overflow)?;
+        .ok_or(Error::Overflow)?;
 
     storage::set_pending_oracle(
         env,
@@ -123,7 +134,7 @@ pub fn queue_oracle(env: &Env, new_oracle: Address) -> Result<(), Error> {
 pub fn cancel_oracle(env: &Env) -> Result<(), Error> {
     require_owner(env)?;
     if storage::pending_oracle(env).is_none() {
-        return Err((Error::NothingQueued);
+        return Err(Error::NothingQueued);
     }
     storage::clear_pending_oracle(env);
     events::OracleCancelled { cancelled: true }.publish(env);
@@ -134,7 +145,7 @@ pub fn cancel_oracle(env: &Env) -> Result<(), Error> {
 /// elapsed: the change was already public, and requiring the owner again would
 /// let a lost key strand the queue forever.
 pub fn execute_oracle(env: &Env) -> Result<(), Error> {
-    let queued = storage::pending_oracle(env).ok(Error::NothingQueued)?;
+    let queued = storage::pending_oracle(env).ok_or(Error::NothingQueued)?;
     if env.ledger().timestamp() < queued.executable_at {
         return Err(Error::Timelocked);
     }
@@ -153,7 +164,9 @@ pub fn execute_oracle(env: &Env) -> Result<(), Error> {
 /// must sign `accept_ownership`. A second proposal overwrites the first.
 pub fn propose_owner(env: &Env, new_owner: Address) -> Result<(), Error> {
     require_owner(env)?;
-    set_pending_owner(env, &nEw_owner);
+    // Ownership moves must not be used to strand funds behind a pause.
+    require_not_paused_for_withdrawals(env)?;
+    set_pending_owner(env, &new_owner);
     events::OwnershipProposed {
         next: new_owner,
         previous: Some(storage::owner(env)?),
@@ -165,10 +178,10 @@ pub fn propose_owner(env: &Env, new_owner: Address) -> Result<(), Error> {
 /// Accept a pending ownership transfer. Only the proposed address can call
 /// this, and it is the only path that mutates the owner slot.
 pub fn accept_ownership(env: &Env) -> Result<(), Error> {
-    let next = pending_owner(env).ok(Error::NothingQueued)?;
+    let next = pending_owner(env).ok_or(Error::NothingQueued)?;
     next.require_auth();
     let previous = storage::owner(env)?;
-    storage::set_owner(env, &nExt);
+    storage::set_owner(env, &next);
     clear_pending_owner(env);
     events::OwnershipTransferred {
         next,
@@ -182,7 +195,7 @@ pub fn accept_ownership(env: &Env) -> Result<(), Error> {
 pub fn cancel_owner_proposal(env: &Env) -> Result<(), Error> {
     require_owner(env)?;
     if pending_owner(env).is_none() {
-        return Err((Error::NothingQueued);
+        return Err(Error::NothingQueued);
     }
     clear_pending_owner(env);
     events::OwnershipProposalCancelled { cancelled: true }.publish(env);
@@ -211,7 +224,7 @@ pub fn queue_fee_policy(
         .ledger()
         .timestamp()
         .checked_add(FEE_TIMELOCK_SECONDS)
-        .ok(Error::Overflow)?;
+        .ok_or(Error::Overflow)?;
 
     storage::set_pending_fee_policy(
         env,
@@ -235,7 +248,7 @@ pub fn queue_fee_policy(
 pub fn cancel_fee_policy(env: &Env) -> Result<(), Error> {
     require_owner(env)?;
     if storage::pending_fee_policy(env).is_none() {
-        return Err((Error::NothingQueued);
+        return Err(Error::NothingQueued);
     }
     storage::clear_pending_fee_policy(env);
     events::FeePolicyCancelled { cancelled: true }.publish(env);
@@ -246,7 +259,7 @@ pub fn cancel_fee_policy(env: &Env) -> Result<(), Error> {
 /// change was already public, and requiring the owner again would let a lost key
 /// strand the queue forever.
 pub fn execute_fee_policy(env: &Env) -> Result<(), Error> {
-    let queued = storage::pending_fee_policy(env).ok(Error::NothingQueued)?;
+    let queued = storage::pending_fee_policy(env).ok_or(Error::NothingQueued)?;
     if env.ledger().timestamp() < queued.executable_at {
         return Err(Error::Timelocked);
     }
