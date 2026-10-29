@@ -1,6 +1,6 @@
 //! Typed contract events, mirroring the `event` declarations in MimirV2.sol.
 
-use soroban_sdk:{contractevent, Address, BytesN, String};
+use soroban_sdk::{contractevent, Address, BytesN, String};
 
 use crate::types::WinnerSide;
 
@@ -118,6 +118,9 @@ pub struct OracleCancelled {
     pub cancelled: bool,
 }
 
+/// Emitted when the proposed owner accepts ownership via `accept_ownership`.
+/// This is the only event that signals ownership has actually moved; a
+/// proposal alone emits `OwnershipProposed`.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OwnershipTransferred {

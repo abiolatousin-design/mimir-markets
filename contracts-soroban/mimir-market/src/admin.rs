@@ -18,6 +18,12 @@ fn require_not_paused_for_withdrawals(env: &Env) -> Result<(), Error> {
     Ok(())
 }
 
+/// Ownership transfers are two-step and must never be used to strand funds
+/// behind a pause. Shared guard for the propose/accept flow.
+fn require_not_paused_for_ownership(env: &Env) -> Result<(), Error> {
+    require_not_paused_for_withdrawals(env)
+}
+
 fn require_owner(env: &Env) -> Result<(), Error> {
     storage::owner(env)?.require_auth();
     Ok(())
@@ -165,21 +171,29 @@ pub fn execute_oracle(env: &Env) -> Result<(), Error> {
 pub fn propose_owner(env: &Env, new_owner: Address) -> Result<(), Error> {
     require_owner(env)?;
     // Ownership moves must not be used to strand funds behind a pause.
-    require_not_paused_for_withdrawals(env)?;
+    require_not_paused_for_ownership(env)?;
+    let previous = storage::owner(env)?;
+    if new_owner == previous {
+        return Err(Error::NothingQueued);
+    }
     set_pending_owner(env, &new_owner);
     events::OwnershipProposed {
-        next: new_owner,
-        previous: Some(storage::owner(env)?),
+        next: new_owner.clone(),
+        previous: Some(previous),
     }
     .publish(env);
     Ok(())
 }
 
 /// Accept a pending ownership transfer. Only the proposed address can call
-/// this, and it is the only path that mutates the owner slot.
+/// this, and it is the only path that mutates the owner slot. Any pending
+/// proposal is consumed on acceptance so no stale proposal survives an owner
+/// change.
 pub fn accept_ownership(env: &Env) -> Result<(), Error> {
+    require_not_paused_for_ownership(env)?;
     let next = pending_owner(env).ok_or(Error::NothingQueued)?;
     next.require_auth();
+    // Two-step handoff: only the proposed address can complete the transfer.
     let previous = storage::owner(env)?;
     storage::set_owner(env, &next);
     clear_pending_owner(env);
@@ -191,6 +205,11 @@ pub fn accept_ownership(env: &Env) -> Result<(), Error> {
     Ok(())
 }
 
+/// Expose the pending owner for off-chain tooling and tests.
+pub fn pending_owner_of(env: &Env) -> Option<Address> {
+    pending_owner(env)
+}
+
 /// Cancel a pending ownership proposal. Owner auth only.
 pub fn cancel_owner_proposal(env: &Env) -> Result<(), Error> {
     require_owner(env)?;
@@ -200,13 +219,6 @@ pub fn cancel_owner_proposal(env: &Env) -> Result<(), Error> {
     clear_pending_owner(env);
     events::OwnershipProposalCancelled { cancelled: true }.publish(env);
     Ok(())
-}
-
-/// DEPRECATED: single-call ownership transfer. Kept as an alias for the
-/// two-step flow so existing callers do not break; it now only proposes.
-/// See `CHANGELOG.md` (Unreleased).
-pub fn transfer_ownership(env: &Env, new_owner: Address) -> Result<(), Error> {
-    propose_owner(env, new_owner)
 }
 
 /// Queue a fee policy change. It cannot be executed until the timelock elapses,
